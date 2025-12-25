@@ -28,6 +28,14 @@ class SessionManagementPage extends Page implements HasForms
         return __('messages.session_management');
     }
 
+    public function getBreadcrumbs(): array
+    {
+        return [
+            url('/doctor') => 'لوحة التحكم',
+            '' => 'إدارة الجلسات',
+        ];
+    }
+
     public ?array $data = [];
 
     public function mount(): void
@@ -57,36 +65,29 @@ class SessionManagementPage extends Page implements HasForms
                             $session = OrderItem::find($state);
                             if ($session) {
                                 $set('price', $session->price ?? 0);
-                                $set('eligible_for_installment', $session->eligible_for_installment ?? false);
-                                $set('down_payment', $session->down_payment ?? 0);
                                 $set('next_session_date', $session->next_session_date?->format('Y-m-d'));
                                 $set('notes', $session->notes ?? '');
                             }
                         }
                     }),
-            Forms\Components\TextInput::make('price')
-                ->label(__('messages.session_price'))
-                ->numeric()
-                ->required()
-                ->minValue(0),
-            Forms\Components\Toggle::make('eligible_for_installment')
-                ->label(__('messages.eligible_for_installment')),
-            Forms\Components\TextInput::make('down_payment')
-                ->label(__('messages.down_payment'))
-                ->numeric()
-                ->minValue(0)
-                ->visible(fn (callable $get) => $get('eligible_for_installment')),
-            Forms\Components\DatePicker::make('next_session_date')
-                ->label(__('messages.next_session_date'))
-                ->native(false),
+                Forms\Components\TextInput::make('price')
+                    ->label(__('messages.session_price'))
+                    ->numeric()
+                    ->required()
+                    ->minValue(0)
+                    ->prefix('SYP'),
+                Forms\Components\DatePicker::make('next_session_date')
+                    ->label(__('messages.next_session_date'))
+                    ->native(false),
                 Forms\Components\Textarea::make('notes')
                     ->label(__('messages.notes'))
-                    ->rows(3),
+                    ->rows(3)
+                    ->columnSpanFull(),
             ])
             ->statePath('data');
     }
 
-    public function setPrice(): void
+    public function save(): void
     {
         $data = $this->form->getState();
         
@@ -109,101 +110,46 @@ class SessionManagementPage extends Page implements HasForms
         }
 
         try {
-            $session->update(['price' => $data['price']]);
-            Notification::make()
-                ->title(__('messages.price_updated_successfully'))
-                ->success()
-                ->send();
-        } catch (\Exception $e) {
-            Notification::make()
-                ->title(__('messages.error_updating_price'))
-                ->body($e->getMessage())
-                ->danger()
-                ->send();
-        }
-    }
-
-    public function setInstallment(): void
-    {
-        $data = $this->form->getState();
-        
-        if (!$data['session_id']) {
-            Notification::make()
-                ->title(__('messages.please_select_session'))
-                ->warning()
-                ->send();
-            return;
-        }
-
-        $session = OrderItem::find($data['session_id']);
-        
-        if (!$session) {
-            return;
-        }
-
-        try {
-            $session->update([
-                'eligible_for_installment' => $data['eligible_for_installment'] ?? false,
-                'down_payment' => $data['down_payment'] ?? 0,
+            $updateData = [
                 'price' => $data['price'] ?? $session->price,
-            ]);
-            Notification::make()
-                ->title(__('messages.installment_eligibility_updated'))
-                ->success()
-                ->send();
-        } catch (\Exception $e) {
-            Notification::make()
-                ->title(__('messages.error_updating_installment_eligibility'))
-                ->body($e->getMessage())
-                ->danger()
-                ->send();
-        }
-    }
+                'notes' => $data['notes'] ?? null,
+            ];
 
-    public function scheduleNextSession(): void
-    {
-        $data = $this->form->getState();
-        
-        if (!$data['session_id']) {
-            Notification::make()
-                ->title(__('messages.please_select_session'))
-                ->warning()
-                ->send();
-            return;
-        }
-
-        $session = OrderItem::find($data['session_id']);
-        
-        if (!$session || !$data['next_session_date']) {
-            Notification::make()
-                ->title(__('messages.please_select_date'))
-                ->warning()
-                ->send();
-            return;
-        }
-
-        try {
-            $session->update(['next_session_date' => $data['next_session_date']]);
-            
-            // Create appointment if order item is linked
-            if ($session->order->patient_id) {
-                Appointment::create([
-                    'patient_id' => $session->order->patient_id,
-                    'doctor_id' => $session->doctor_id,
-                    'order_item_id' => $session->id,
-                    'appointment_date' => $data['next_session_date'],
-                    'status' => 'scheduled',
-                    'notes' => $data['notes'] ?? null,
-                ]);
+            // Update next session date if provided
+            if (isset($data['next_session_date']) && $data['next_session_date']) {
+                $updateData['next_session_date'] = $data['next_session_date'];
+                
+                // Create appointment if order item is linked and appointment doesn't exist
+                if ($session->order->patient_id && !$session->appointment) {
+                    Appointment::create([
+                        'patient_id' => $session->order->patient_id,
+                        'doctor_id' => $session->doctor_id,
+                        'order_item_id' => $session->id,
+                        'appointment_date' => $data['next_session_date'],
+                        'status' => 'scheduled',
+                        'notes' => $data['notes'] ?? null,
+                    ]);
+                } elseif ($session->appointment) {
+                    // Update existing appointment
+                    $session->appointment->update([
+                        'appointment_date' => $data['next_session_date'],
+                        'notes' => $data['notes'] ?? null,
+                    ]);
+                }
             }
+
+            $session->update($updateData);
+            
+            // Update order amounts after price change
+            $session->order->updateAmounts();
             
             Notification::make()
-                ->title(__('messages.next_session_scheduled_successfully'))
+                ->title(__('messages.session_updated_successfully'))
                 ->success()
                 ->send();
         } catch (\Exception $e) {
             Notification::make()
-                ->title(__('messages.error_scheduling_next_session'))
+                ->title(__('messages.error_updating_session'))
                 ->body($e->getMessage())
                 ->danger()
                 ->send();

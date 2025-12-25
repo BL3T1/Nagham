@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class OrderItem extends Model
@@ -47,6 +48,11 @@ class OrderItem extends Model
         return $this->hasOne(Appointment::class);
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
     public function scopePending($query)
     {
         return $query->where('status', 'pending');
@@ -74,11 +80,13 @@ class OrderItem extends Model
 
     public function getRemainingAmountAttribute(): float
     {
-        if (!$this->canInstallment()) {
-            return $this->price ?? 0.00;
-        }
+        $paidAmount = (float) $this->payments()
+            ->where('payment_type', '!=', 'refund')
+            ->sum('amount') ?? 0.00;
         
-        return round(($this->price ?? 0.00) - ($this->down_payment ?? 0.00), 2);
+        $remaining = round(($this->price ?? 0.00) - $paidAmount, 2);
+        
+        return max(0, $remaining);
     }
 }
 

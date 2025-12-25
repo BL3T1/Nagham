@@ -21,6 +21,16 @@ class PaymentResource extends Resource
     
     protected static ?string $navigationLabel = 'المدفوعات';
 
+    public static function getModelLabel(): string
+    {
+        return 'دفعة';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'المدفوعات';
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -37,29 +47,17 @@ class PaymentResource extends Resource
                     ->label('استلم من')
                     ->relationship('receiver', 'name')
                     ->required(),
+                Forms\Components\Select::make('order_item_id')
+                    ->label('عنصر الطلب (الطبيب)')
+                    ->relationship('orderItem', 'id', fn ($query) => $query->with('doctor'))
+                    ->getOptionLabelFromRecordUsing(fn ($record) => "طلب #{$record->order_id} - {$record->doctor->name}")
+                    ->searchable()
+                    ->preload(),
                 Forms\Components\TextInput::make('amount')
                     ->label('المبلغ')
                     ->required()
                     ->numeric()
                     ->prefix('SYP'),
-                Forms\Components\Select::make('payment_type')
-                    ->label('نوع الدفع')
-                    ->options([
-                        'full' => 'كامل',
-                        'partial' => 'جزئي',
-                        'installment' => 'قسط',
-                        'refund' => 'استرجاع',
-                    ])
-                    ->required(),
-                Forms\Components\Select::make('payment_method')
-                    ->label('طريقة الدفع')
-                    ->options([
-                        'cash' => 'نقدي',
-                        'card' => 'بطاقة',
-                        'bank_transfer' => 'تحويل بنكي',
-                        'other' => 'أخرى',
-                    ])
-                    ->required(),
                 Forms\Components\Textarea::make('notes')
                     ->label('ملاحظات')
                     ->columnSpanFull(),
@@ -85,24 +83,10 @@ class PaymentResource extends Resource
                     ->label('المبلغ')
                     ->formatStateUsing(fn ($state) => number_format($state ?? 0, 2) . ' SYP')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('payment_type')
-                    ->label('نوع الدفع')
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'full' => 'كامل',
-                        'partial' => 'جزئي',
-                        'installment' => 'قسط',
-                        'refund' => 'استرجاع',
-                        default => $state,
-                    }),
-                Tables\Columns\TextColumn::make('payment_method')
-                    ->label('طريقة الدفع')
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'cash' => 'نقدي',
-                        'card' => 'بطاقة',
-                        'bank_transfer' => 'تحويل بنكي',
-                        'other' => 'أخرى',
-                        default => $state,
-                    }),
+                Tables\Columns\TextColumn::make('orderItem.doctor.name')
+                    ->label('الطبيب')
+                    ->sortable()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -116,7 +100,8 @@ class PaymentResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('تعديل'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

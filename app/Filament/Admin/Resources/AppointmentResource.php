@@ -21,6 +21,16 @@ class AppointmentResource extends Resource
     
     protected static ?string $navigationLabel = 'المواعيد';
 
+    public static function getModelLabel(): string
+    {
+        return 'موعد';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'المواعيد';
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -44,10 +54,8 @@ class AppointmentResource extends Resource
                     ->label('الحالة')
                     ->options([
                         'scheduled' => 'مجدول',
-                        'confirmed' => 'مؤكد',
                         'completed' => 'مكتمل',
                         'cancelled' => 'ملغي',
-                        'no_show' => 'لم يحضر',
                     ])
                     ->required(),
                 Forms\Components\Textarea::make('notes')
@@ -60,12 +68,12 @@ class AppointmentResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('patient.name')
-                    ->label('المريض')
-                    ->searchable()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('doctor.name')
                     ->label('الطبيب')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('patient.name')
+                    ->label('المريض')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('orderItem.id')
@@ -79,11 +87,16 @@ class AppointmentResource extends Resource
                     ->label('الحالة')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'scheduled' => 'مجدول',
-                        'confirmed' => 'مؤكد',
                         'completed' => 'مكتمل',
                         'cancelled' => 'ملغي',
-                        'no_show' => 'لم يحضر',
                         default => $state,
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'scheduled' => 'info',
+                        'completed' => 'success',
+                        'cancelled' => 'danger',
+                        default => 'gray',
                     }),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
@@ -95,10 +108,15 @@ class AppointmentResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                Tables\Filters\Filter::make('tomorrow')
+                    ->label('مواعيد الغد')
+                    ->query(fn (Builder $query) => $query->tomorrow())
+                    ->default(),
             ])
+            ->modifyQueryUsing(fn (Builder $query) => $query->tomorrow())
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('تعديل'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

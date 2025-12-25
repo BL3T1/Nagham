@@ -21,6 +21,16 @@ class OrderItemResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
+    public static function getModelLabel(): string
+    {
+        return 'جلسة';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'جلساتي';
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
@@ -51,15 +61,6 @@ class OrderItemResource extends Resource
                     ])
                     ->required()
                     ->default('pending'),
-                Forms\Components\Toggle::make('eligible_for_installment')
-                    ->label('مؤهل للتقسيط'),
-                Forms\Components\TextInput::make('down_payment')
-                    ->label('المقدم')
-                    ->numeric()
-                    ->prefix('SYP')
-                    ->minValue(0)
-                    ->step(0.01)
-                    ->visible(fn (Forms\Get $get) => $get('eligible_for_installment')),
                 Forms\Components\DatePicker::make('next_session_date')
                     ->label('تاريخ الجلسة القادمة'),
                 Forms\Components\Textarea::make('notes')
@@ -101,9 +102,6 @@ class OrderItemResource extends Resource
                         'cancelled' => 'danger',
                         default => 'gray',
                     }),
-                Tables\Columns\IconColumn::make('eligible_for_installment')
-                    ->boolean()
-                    ->label('تقسيط'),
                 Tables\Columns\TextColumn::make('next_session_date')
                     ->label('تاريخ الجلسة القادمة')
                     ->date()
@@ -124,7 +122,8 @@ class OrderItemResource extends Resource
                     ]),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('تعديل'),
                 Tables\Actions\Action::make('complete')
                     ->label('تحديد كمكتمل')
                     ->icon('heroicon-o-check-circle')

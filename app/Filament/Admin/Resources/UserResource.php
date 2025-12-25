@@ -20,6 +20,16 @@ class UserResource extends Resource
 
     protected static ?int $navigationSort = 10;
 
+    public static function getModelLabel(): string
+    {
+        return 'مستخدم';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'المستخدمون';
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -102,7 +112,8 @@ class UserResource extends Resource
                     ->label('نشط'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('تعديل'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

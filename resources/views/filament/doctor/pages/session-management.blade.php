@@ -1,18 +1,10 @@
 <x-filament-panels::page>
-    <form wire:submit.prevent>
+    <form wire:submit.prevent="save">
         {{ $this->form }}
 
-        <div class="mt-4 space-x-2">
-            <x-filament::button type="button" wire:click="setPrice" color="primary">
-                تحديث السعر
-            </x-filament::button>
-
-            <x-filament::button type="button" wire:click="setInstallment" color="warning">
-                تحديث التقسيط
-            </x-filament::button>
-
-            <x-filament::button type="button" wire:click="scheduleNextSession" color="info">
-                جدولة الجلسة القادمة
+        <div class="mt-6 space-x-2">
+            <x-filament::button type="submit" color="primary">
+                حفظ البيانات
             </x-filament::button>
 
             <x-filament::button type="button" wire:click="endSession" color="danger">

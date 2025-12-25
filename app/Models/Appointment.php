@@ -46,11 +46,6 @@ class Appointment extends Model
         return $query->where('status', 'scheduled');
     }
 
-    public function scopeConfirmed($query)
-    {
-        return $query->where('status', 'confirmed');
-    }
-
     public function scopeCancelled($query)
     {
         return $query->where('status', 'cancelled');
@@ -66,6 +61,11 @@ class Appointment extends Model
         return $query->whereDate('appointment_date', now()->addDay());
     }
 
+    public function scopeToday($query)
+    {
+        return $query->whereDate('appointment_date', today());
+    }
+
     public function isPast(): bool
     {
         return $this->appointment_date && $this->appointment_date->isPast();
@@ -76,9 +76,5 @@ class Appointment extends Model
         return $this->appointment_date && $this->appointment_date->isToday();
     }
 
-    public function isConfirmed(): bool
-    {
-        return $this->status === 'confirmed';
-    }
 }
 

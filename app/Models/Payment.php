@@ -12,6 +12,7 @@ class Payment extends Model
     
     protected $fillable = [
         'order_id',
+        'order_item_id',
         'patient_id',
         'received_by',
         'amount',
@@ -40,6 +41,11 @@ class Payment extends Model
     public function receiver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'received_by');
+    }
+
+    public function orderItem(): BelongsTo
+    {
+        return $this->belongsTo(OrderItem::class);
     }
 
     public function scopeFull($query)

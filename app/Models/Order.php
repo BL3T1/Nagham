@@ -66,13 +66,16 @@ class Order extends Model
         if ($this->remaining_amount <= $threshold) {
             $this->payment_status = 'paid';
             $this->remaining_amount = 0.00;
-        } elseif ($this->paid_amount > $threshold) {
-            $this->payment_status = 'partial';
         } else {
-            $this->payment_status = 'pending';
+            $this->payment_status = 'not_paid';
         }
         
         $this->save();
+        
+        // Update each order item's payment status
+        foreach ($this->orderItems as $orderItem) {
+            $orderItem->refresh();
+        }
     }
 
     public function scopePending($query)
@@ -87,7 +90,7 @@ class Order extends Model
 
     public function scopeUnpaid($query)
     {
-        return $query->where('payment_status', '!=', 'paid');
+        return $query->where('payment_status', 'not_paid');
     }
 
     public function isPaid(): bool

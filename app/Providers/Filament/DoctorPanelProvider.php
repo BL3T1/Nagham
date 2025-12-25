@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\Doctor\Pages\SessionManagementPage;
 use App\Filament\Doctor\Pages\TodayPatientsPage;
+use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -12,7 +13,9 @@ use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets;
+use Illuminate\Contracts\View\View;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -23,6 +26,14 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class DoctorPanelProvider extends PanelProvider
 {
+    public function boot(): void
+    {
+        Filament::registerRenderHook(
+            PanelsRenderHook::STYLES_AFTER,
+            fn (): View => view('filament.doctor.custom-styles'),
+        );
+    }
+
     protected function getLanguageSwitchUrl(): string
     {
         $currentLocale = App::getLocale();

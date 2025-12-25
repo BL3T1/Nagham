@@ -23,6 +23,16 @@ class OrderResource extends Resource
 
     protected static ?string $navigationLabel = 'الطلبات';
 
+    public static function getModelLabel(): string
+    {
+        return 'طلب';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'الطلبات';
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -46,12 +56,11 @@ class OrderResource extends Resource
                 Forms\Components\Select::make('payment_status')
                     ->label('حالة الدفع')
                     ->options([
-                        'pending' => 'قيد الانتظار',
-                        'partial' => 'جزئي',
                         'paid' => 'مدفوع',
+                        'not_paid' => 'غير مدفوع',
                     ])
                     ->required()
-                    ->default('pending')
+                    ->default('not_paid')
                     ->disabled(),
                 Forms\Components\TextInput::make('total_amount')
                     ->label('المبلغ الإجمالي')
@@ -106,33 +115,24 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('payment_status')
                     ->label('حالة الدفع')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'pending' => 'قيد الانتظار',
-                        'partial' => 'جزئي',
                         'paid' => 'مدفوع',
+                        'not_paid' => 'غير مدفوع',
                         default => $state,
                     })
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'pending' => 'warning',
-                        'partial' => 'info',
                         'paid' => 'success',
+                        'not_paid' => 'warning',
                         default => 'gray',
                     }),
                 Tables\Columns\TextColumn::make('total_amount')
                     ->label('المبلغ الإجمالي')
                     ->formatStateUsing(fn ($state): string => number_format($state ?? 0, 2) . ' SYP')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('paid_amount')
-                    ->label('المبلغ المدفوع')
-                    ->formatStateUsing(fn ($state): string => number_format($state ?? 0, 2) . ' SYP')
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('remaining_amount')
                     ->label('المبلغ المتبقي')
                     ->formatStateUsing(fn ($state): string => number_format($state ?? 0, 2) . ' SYP')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('orderItems_count')
-                    ->counts('orderItems')
-                    ->label('الجلسات'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -150,14 +150,15 @@ class OrderResource extends Resource
                 Tables\Filters\SelectFilter::make('payment_status')
                     ->label('حالة الدفع')
                     ->options([
-                        'pending' => 'قيد الانتظار',
-                        'partial' => 'جزئي',
                         'paid' => 'مدفوع',
+                        'not_paid' => 'غير مدفوع',
                     ]),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\ViewAction::make()
+                    ->label('عرض'),
+                Tables\Actions\EditAction::make()
+                    ->label('تعديل'),
                 ProcessPaymentAction::make(),
             ])
             ->bulkActions([
@@ -198,23 +199,18 @@ class OrderResource extends Resource
                         Infolists\Components\TextEntry::make('payment_status')
                             ->label('حالة الدفع')
                             ->formatStateUsing(fn (string $state): string => match ($state) {
-                                'pending' => 'قيد الانتظار',
-                                'partial' => 'جزئي',
                                 'paid' => 'مدفوع',
+                                'not_paid' => 'غير مدفوع',
                                 default => $state,
                             })
                             ->badge()
                             ->color(fn (string $state): string => match ($state) {
-                                'pending' => 'warning',
-                                'partial' => 'info',
                                 'paid' => 'success',
+                                'not_paid' => 'warning',
                                 default => 'gray',
                             }),
                         Infolists\Components\TextEntry::make('total_amount')
                             ->label('المبلغ الإجمالي')
-                            ->formatStateUsing(fn ($state): string => number_format($state ?? 0, 2) . ' SYP'),
-                        Infolists\Components\TextEntry::make('paid_amount')
-                            ->label('المبلغ المدفوع')
                             ->formatStateUsing(fn ($state): string => number_format($state ?? 0, 2) . ' SYP'),
                         Infolists\Components\TextEntry::make('remaining_amount')
                             ->label('المبلغ المتبقي')

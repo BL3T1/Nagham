@@ -18,33 +18,34 @@ class PaymentsRelationManager extends RelationManager
     {
         return $form
             ->schema([
+                Forms\Components\Select::make('order_item_id')
+                    ->label('الجلسة (الطبيب)')
+                    ->options(function () {
+                        $order = $this->ownerRecord;
+                        return $order->orderItems()
+                            ->with('doctor')
+                            ->get()
+                            ->mapWithKeys(fn ($item) => [
+                                $item->id => "{$item->doctor->name} - " . number_format($item->remaining_amount, 2) . " SYP متبقي"
+                            ]);
+                    })
+                    ->required()
+                    ->live()
+                    ->afterStateUpdated(function ($state, Forms\Set $set) {
+                        if ($state) {
+                            $orderItem = \App\Models\OrderItem::find($state);
+                            if ($orderItem) {
+                                $set('amount', $orderItem->remaining_amount);
+                            }
+                        }
+                    }),
                 Forms\Components\TextInput::make('amount')
-                    ->label('المبلغ')
+                    ->label('المبلغ المدفوع')
                     ->required()
                     ->numeric()
                     ->prefix('SYP')
                     ->minValue(0.01)
                     ->step(0.01),
-                Forms\Components\Select::make('payment_type')
-                    ->label('نوع الدفع')
-                    ->options([
-                        'full' => 'دفع كامل',
-                        'partial' => 'دفع جزئي',
-                        'installment' => 'قسط',
-                        'refund' => 'استرجاع',
-                    ])
-                    ->required()
-                    ->default('full'),
-                Forms\Components\Select::make('payment_method')
-                    ->label('طريقة الدفع')
-                    ->options([
-                        'cash' => 'نقدي',
-                        'card' => 'بطاقة',
-                        'bank_transfer' => 'تحويل بنكي',
-                        'other' => 'أخرى',
-                    ])
-                    ->required()
-                    ->default('cash'),
                 Forms\Components\Textarea::make('notes')
                     ->label('ملاحظات')
                     ->rows(3)
@@ -61,33 +62,10 @@ class PaymentsRelationManager extends RelationManager
                     ->label('المبلغ')
                     ->formatStateUsing(fn ($state) => number_format($state ?? 0, 2) . ' SYP')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('payment_type')
-                    ->label('نوع الدفع')
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'full' => 'دفع كامل',
-                        'partial' => 'دفع جزئي',
-                        'installment' => 'قسط',
-                        'refund' => 'استرجاع',
-                        default => $state,
-                    })
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'full' => 'success',
-                        'partial' => 'info',
-                        'installment' => 'warning',
-                        'refund' => 'danger',
-                        default => 'gray',
-                    }),
-                Tables\Columns\TextColumn::make('payment_method')
-                    ->label('طريقة الدفع')
-                    ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'cash' => 'نقدي',
-                        'card' => 'بطاقة',
-                        'bank_transfer' => 'تحويل بنكي',
-                        'other' => 'أخرى',
-                        default => $state,
-                    })
-                    ->badge(),
+                Tables\Columns\TextColumn::make('orderItem.doctor.name')
+                    ->label('الطبيب')
+                    ->sortable()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('receiver.name')
                     ->label('استلم من')
                     ->sortable(),
@@ -107,15 +85,24 @@ class PaymentsRelationManager extends RelationManager
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
+                    ->label('إضافة دفعة')
                     ->mutateFormDataUsing(function (array $data): array {
+                        $data['order_id'] = $this->ownerRecord->id;
                         $data['patient_id'] = $this->ownerRecord->patient_id;
                         $data['received_by'] = auth()->id();
+                        $data['payment_type'] = 'partial';
+                        $data['payment_method'] = 'cash';
                         return $data;
+                    })
+                    ->after(function () {
+                        $this->ownerRecord->updateAmounts();
                     }),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('تعديل'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('حذف'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

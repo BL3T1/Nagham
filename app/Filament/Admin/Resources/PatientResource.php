@@ -11,6 +11,7 @@ use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class PatientResource extends Resource
 {
@@ -19,6 +20,16 @@ class PatientResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
 
     protected static ?string $navigationLabel = 'المرضى';
+
+    public static function getModelLabel(): string
+    {
+        return 'مريض';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'المرضى';
+    }
 
     public static function form(Form $form): Form
     {
@@ -33,10 +44,6 @@ class PatientResource extends Resource
                     ->required()
                     ->tel()
                     ->unique(ignoreRecord: true)
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('email')
-                    ->label('البريد الإلكتروني')
-                    ->email()
                     ->maxLength(255),
                 Forms\Components\DatePicker::make('date_of_birth')
                     ->label('تاريخ الميلاد'),
@@ -68,9 +75,6 @@ class PatientResource extends Resource
                 Tables\Columns\TextColumn::make('phone')
                     ->label('الهاتف')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('email')
-                    ->label('البريد الإلكتروني')
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('age')
                     ->label('العمر')
                     ->getStateUsing(fn (Patient $record) => $record->age),
@@ -82,9 +86,6 @@ class PatientResource extends Resource
                         default => $state,
                     })
                     ->badge(),
-                Tables\Columns\TextColumn::make('orders_count')
-                    ->counts('orders')
-                    ->label('الطلبات'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -97,10 +98,65 @@ class PatientResource extends Resource
                         'male' => 'ذكر',
                         'female' => 'أنثى',
                     ]),
+                Tables\Filters\Filter::make('appointment_date')
+                    ->label('تاريخ الموعد')
+                    ->form([
+                        Forms\Components\DatePicker::make('appointment_date')
+                            ->label('تاريخ الموعد'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['appointment_date'],
+                                fn (Builder $query, $date): Builder => $query->whereHas('appointments', function ($q) use ($date) {
+                                    $q->whereDate('appointment_date', $date);
+                                })
+                            );
+                    }),
+                Tables\Filters\Filter::make('appointment_date_range')
+                    ->label('نطاق تاريخ الموعد')
+                    ->form([
+                        Forms\Components\DatePicker::make('appointment_date_from')
+                            ->label('من تاريخ'),
+                        Forms\Components\DatePicker::make('appointment_date_to')
+                            ->label('إلى تاريخ'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['appointment_date_from'],
+                                fn (Builder $query, $date): Builder => $query->whereHas('appointments', function ($q) use ($date) {
+                                    $q->whereDate('appointment_date', '>=', $date);
+                                })
+                            )
+                            ->when(
+                                $data['appointment_date_to'],
+                                fn (Builder $query, $date): Builder => $query->whereHas('appointments', function ($q) use ($date) {
+                                    $q->whereDate('appointment_date', '<=', $date);
+                                })
+                            );
+                    }),
+                Tables\Filters\Filter::make('appointment_today')
+                    ->label('مواعيد اليوم')
+                    ->query(fn (Builder $query): Builder => $query->whereHas('appointments', function ($q) {
+                        $q->whereDate('appointment_date', today());
+                    })),
+                Tables\Filters\Filter::make('appointment_tomorrow')
+                    ->label('مواعيد الغد')
+                    ->query(fn (Builder $query): Builder => $query->whereHas('appointments', function ($q) {
+                        $q->whereDate('appointment_date', now()->addDay());
+                    })),
+                Tables\Filters\Filter::make('appointment_upcoming')
+                    ->label('المواعيد القادمة')
+                    ->query(fn (Builder $query): Builder => $query->whereHas('appointments', function ($q) {
+                        $q->where('appointment_date', '>=', now());
+                    })),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\ViewAction::make()
+                    ->label('عرض'),
+                Tables\Actions\EditAction::make()
+                    ->label('تعديل'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

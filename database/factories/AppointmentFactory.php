@@ -32,7 +32,7 @@ class AppointmentFactory extends Factory
             'doctor_id' => User::factory(),
             'order_item_id' => OrderItem::factory(),
             'appointment_date' => fake()->dateTimeBetween('now', '+60 days'),
-            'status' => fake()->randomElement(['scheduled', 'confirmed', 'completed', 'cancelled', 'no_show']),
+            'status' => fake()->randomElement(['scheduled', 'completed', 'cancelled']),
             'notes' => fake()->optional()->sentence(),
         ];
     }
@@ -48,16 +48,6 @@ class AppointmentFactory extends Factory
         ]);
     }
 
-    /**
-     * Indicate that the appointment is confirmed.
-     */
-    public function confirmed(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'status' => 'confirmed',
-            'appointment_date' => fake()->dateTimeBetween('now', '+30 days'),
-        ]);
-    }
 
     /**
      * Indicate that the appointment is completed.

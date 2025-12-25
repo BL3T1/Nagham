@@ -156,10 +156,10 @@ class ClinicSystemTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('appointments', ['id' => $appointment->id]);
-        $this->assertTrue($appointment->isConfirmed() === false);
+        $this->assertEquals('scheduled', $appointment->status);
         
-        $appointment->update(['status' => 'confirmed']);
-        $this->assertTrue($appointment->fresh()->isConfirmed());
+        $appointment->update(['status' => 'completed']);
+        $this->assertEquals('completed', $appointment->fresh()->status);
     }
 
     public function test_patient_search_scope()

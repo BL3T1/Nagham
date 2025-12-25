@@ -15,8 +15,10 @@ class EditOrder extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\ViewAction::make(),
-            Actions\DeleteAction::make(),
+            Actions\ViewAction::make()
+                ->label('عرض'),
+            Actions\DeleteAction::make()
+                ->label('حذف'),
         ];
     }
 }

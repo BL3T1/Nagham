@@ -15,7 +15,7 @@ class CreateOrder extends CreateRecord
     {
         $data['created_by'] = auth()->id();
         $data['status'] = 'pending';
-        $data['payment_status'] = 'pending';
+        $data['payment_status'] = 'not_paid';
         
         return $data;
     }

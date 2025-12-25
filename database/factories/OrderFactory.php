@@ -33,7 +33,7 @@ class OrderFactory extends Factory
             'total_amount' => fake()->randomFloat(2, 100, 5000),
             'paid_amount' => fake()->randomFloat(2, 0, 3000),
             'remaining_amount' => fake()->randomFloat(2, 0, 3000),
-            'payment_status' => fake()->randomElement(['pending', 'partial', 'paid']),
+            'payment_status' => fake()->randomElement(['paid', 'not_paid']),
             'notes' => fake()->optional()->paragraph(),
         ];
     }
@@ -45,7 +45,7 @@ class OrderFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => 'pending',
-            'payment_status' => 'pending',
+            'payment_status' => 'not_paid',
             'paid_amount' => 0,
             'remaining_amount' => $attributes['total_amount'] ?? 0,
         ]);
@@ -74,7 +74,7 @@ class OrderFactory extends Factory
             $paidAmount = fake()->randomFloat(2, 1, $totalAmount - 1);
             
             return [
-                'payment_status' => 'partial',
+                'payment_status' => 'not_paid',
                 'paid_amount' => $paidAmount,
                 'remaining_amount' => round($totalAmount - $paidAmount, 2),
             ];

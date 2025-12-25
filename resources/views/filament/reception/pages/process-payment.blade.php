@@ -2,7 +2,7 @@
     <form wire:submit="process">
         {{ $this->form }}
 
-        <div class="mt-4">
+        <div class="mt-6">
             <x-filament::button type="submit" color="success" size="lg">
                 معالجة الدفع
             </x-filament::button>

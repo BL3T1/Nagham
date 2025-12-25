@@ -12,7 +12,7 @@
             }
         </style>
     </head>
-    <body class="min-h-screen flex items-center justify-center" style="background-color: var(--secondary-color);">
+    <body class="min-h-screen flex items-center justify-center" style="background-color: #13291e;">
         <div class="max-w-4xl w-full px-6 py-12">
             <div class="text-center mb-12">
                 <img src="{{ asset('logo.png') }}" alt="Logo" class="mx-auto mb-6" style="height: 200px; width: auto;">

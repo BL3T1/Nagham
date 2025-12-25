@@ -10,24 +10,30 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
-class Appointments extends Page implements HasTable
+class TomorrowAppointments extends Page implements HasTable
 {
     use InteractsWithTable;
 
-    protected static ?string $navigationIcon = 'heroicon-o-calendar';
+    protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
 
-    protected static string $view = 'filament.reception.pages.appointments';
+    protected static string $view = 'filament.reception.pages.tomorrow-appointments';
 
-    protected static ?string $navigationLabel = 'المواعيد';
+    protected static ?string $navigationLabel = 'مواعيد الغد';
 
-    protected static ?string $title = 'المواعيد';
+    protected static ?string $title = 'مواعيد الغد';
 
-    protected static ?int $navigationSort = 3;
+    public function getBreadcrumbs(): array
+    {
+        return [
+            url('/reception') => 'لوحة التحكم',
+            '' => 'مواعيد الغد',
+        ];
+    }
 
     public function table(Table $table): Table
     {
         return $table
-            ->query(Appointment::query()->with(['patient', 'doctor', 'orderItem']))
+            ->query(Appointment::query()->whereDate('appointment_date', now()->addDay()))
             ->columns([
                 Tables\Columns\TextColumn::make('patient.name')
                     ->label('المريض')
@@ -45,43 +51,35 @@ class Appointments extends Page implements HasTable
                     ->label('الحالة')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'scheduled' => 'مجدول',
-                        'confirmed' => 'مؤكد',
                         'completed' => 'مكتمل',
                         'cancelled' => 'ملغي',
-                        'no_show' => 'لم يحضر',
                         default => $state,
                     })
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'scheduled' => 'info',
-                        'confirmed' => 'success',
-                        'completed' => 'gray',
+                        'completed' => 'success',
                         'cancelled' => 'danger',
-                        'no_show' => 'warning',
                         default => 'gray',
                     }),
-                Tables\Columns\TextColumn::make('orderItem.order.id')
-                    ->label('رقم الطلب')
-                    ->toggleable(),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('doctor_id')
+                    ->label('الطبيب')
+                    ->relationship('doctor', 'name', fn ($query) => $query->where('role', 'doctor'))
+                    ->searchable()
+                    ->preload(),
                 Tables\Filters\SelectFilter::make('status')
                     ->label('الحالة')
                     ->options([
                         'scheduled' => 'مجدول',
-                        'confirmed' => 'مؤكد',
                         'completed' => 'مكتمل',
                         'cancelled' => 'ملغي',
-                        'no_show' => 'لم يحضر',
                     ]),
-                Tables\Filters\Filter::make('upcoming')
-                    ->label('القادمة')
-                    ->query(fn (Builder $query) => $query->where('appointment_date', '>=', now())),
             ])
             ->defaultSort('appointment_date', 'asc')
-            ->actions([
-                Tables\Actions\EditAction::make(),
-            ]);
+            ->emptyStateHeading('لا توجد مواعيد للغد')
+            ->emptyStateDescription('لا توجد مواعيد مجدولة ليوم الغد');
     }
 }
 

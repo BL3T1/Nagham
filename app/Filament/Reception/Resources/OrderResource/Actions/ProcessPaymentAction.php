@@ -23,43 +23,53 @@ class ProcessPaymentAction extends Action
             ->icon('heroicon-o-currency-dollar')
             ->color('success')
             ->form([
-                Forms\Components\Select::make('payment_type')
-                    ->label('نوع الدفع')
-                    ->options([
-                        'full' => 'دفع كامل',
-                        'partial' => 'دفع جزئي',
-                        'installment' => 'قسط',
-                    ])
+                Forms\Components\Select::make('order_item_id')
+                    ->label('الجلسة (الطبيب)')
+                    ->options(function (Order $record) {
+                        return $record->orderItems()
+                            ->with('doctor')
+                            ->get()
+                            ->mapWithKeys(fn ($item) => [
+                                $item->id => "{$item->doctor->name} - " . number_format($item->remaining_amount, 2) . " SYP متبقي"
+                            ]);
+                    })
                     ->required()
-                    ->default('full')
-                    ->live(),
+                    ->live()
+                    ->afterStateUpdated(function ($state, Forms\Set $set, Order $record) {
+                        if ($state) {
+                            $orderItem = $record->orderItems()->find($state);
+                            if ($orderItem) {
+                                $set('amount', $orderItem->remaining_amount);
+                            }
+                        }
+                    }),
                 Forms\Components\TextInput::make('amount')
-                    ->label('المبلغ')
+                    ->label('المبلغ المدفوع')
                     ->numeric()
                     ->prefix('SYP')
-                    ->required(fn (Forms\Get $get) => in_array($get('payment_type'), ['partial', 'installment']))
-                    ->minValue(0.01)
-                    ->step(0.01)
-                    ->visible(fn (Forms\Get $get) => in_array($get('payment_type'), ['partial', 'installment']))
-                    ->default(fn (Order $record) => $record->remaining_amount),
-                Forms\Components\Select::make('payment_method')
-                    ->label('طريقة الدفع')
-                    ->options([
-                        'cash' => 'نقدي',
-                        'card' => 'بطاقة',
-                        'bank_transfer' => 'تحويل بنكي',
-                        'other' => 'أخرى',
-                    ])
                     ->required()
-                    ->default('cash'),
+                    ->minValue(0.01)
+                    ->step(0.01),
                 Forms\Components\Textarea::make('notes')
                     ->label('ملاحظات')
                     ->rows(3),
             ])
             ->action(function (Order $record, array $data) {
-                // For full payment, use remaining amount
-                if ($data['payment_type'] === 'full') {
-                    $data['amount'] = $record->remaining_amount;
+                if (!isset($data['order_item_id'])) {
+                    Notification::make()
+                        ->title('يرجى اختيار الجلسة (الطبيب)')
+                        ->danger()
+                        ->send();
+                    return;
+                }
+
+                $orderItem = $record->orderItems()->find($data['order_item_id']);
+                if (!$orderItem) {
+                    Notification::make()
+                        ->title('عنصر الجلسة غير موجود')
+                        ->danger()
+                        ->send();
+                    return;
                 }
 
                 // Validate amount
@@ -71,35 +81,28 @@ class ProcessPaymentAction extends Action
                     return;
                 }
 
-                // Validate amount doesn't exceed remaining
-                if ($data['amount'] > $record->remaining_amount) {
+                // Validate amount doesn't exceed remaining for this order item
+                $remainingForItem = $orderItem->remaining_amount;
+                if ($data['amount'] > $remainingForItem) {
                     Notification::make()
-                        ->title('مبلغ الدفع يتجاوز المبلغ المتبقي')
+                        ->title('مبلغ الدفع يتجاوز المبلغ المتبقي لهذا الطبيب')
                         ->danger()
-                        ->send();
-                    return;
-                }
-
-                // Check if order is already paid
-                if ($record->isPaid() && $data['payment_type'] === 'full') {
-                    Notification::make()
-                        ->title('الطلب مدفوع بالكامل بالفعل')
-                        ->warning()
                         ->send();
                     return;
                 }
 
                 Payment::create([
                     'order_id' => $record->id,
+                    'order_item_id' => $orderItem->id,
                     'patient_id' => $record->patient_id,
                     'received_by' => auth()->id(),
                     'amount' => round((float) $data['amount'], 2),
-                    'payment_type' => $data['payment_type'],
-                    'payment_method' => $data['payment_method'],
+                    'payment_type' => 'partial',
+                    'payment_method' => 'cash',
                     'notes' => $data['notes'] ?? null,
                 ]);
 
-                $record->refresh();
+                $record->updateAmounts();
 
                 Notification::make()
                     ->title('تمت معالجة الدفع بنجاح')

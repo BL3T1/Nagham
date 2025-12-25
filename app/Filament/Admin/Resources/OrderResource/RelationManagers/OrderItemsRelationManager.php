@@ -41,15 +41,6 @@ class OrderItemsRelationManager extends RelationManager
                     ])
                     ->required()
                     ->default('pending'),
-                Forms\Components\Toggle::make('eligible_for_installment')
-                    ->label('مؤهل للتقسيط'),
-                Forms\Components\TextInput::make('down_payment')
-                    ->label('المقدم')
-                    ->numeric()
-                    ->prefix('SYP')
-                    ->minValue(0)
-                    ->step(0.01)
-                    ->visible(fn (Forms\Get $get) => $get('eligible_for_installment')),
                 Forms\Components\DatePicker::make('next_session_date')
                     ->label('تاريخ الجلسة القادمة'),
                 Forms\Components\Textarea::make('notes')
@@ -89,13 +80,6 @@ class OrderItemsRelationManager extends RelationManager
                         'cancelled' => 'danger',
                         default => 'gray',
                     }),
-                Tables\Columns\IconColumn::make('eligible_for_installment')
-                    ->boolean()
-                    ->label('تقسيط'),
-                Tables\Columns\TextColumn::make('down_payment')
-                    ->label('المقدم')
-                    ->formatStateUsing(fn ($state) => number_format($state ?? 0, 2) . ' SYP')
-                    ->toggleable(),
                 Tables\Columns\TextColumn::make('next_session_date')
                     ->label('تاريخ الجلسة القادمة')
                     ->date()
@@ -115,15 +99,16 @@ class OrderItemsRelationManager extends RelationManager
                         'completed' => 'مكتمل',
                         'cancelled' => 'ملغي',
                     ]),
-                Tables\Filters\TernaryFilter::make('eligible_for_installment')
-                    ->label('مؤهل للتقسيط'),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                Tables\Actions\CreateAction::make()
+                    ->label('إضافة جلسة'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->label('تعديل'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('حذف'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

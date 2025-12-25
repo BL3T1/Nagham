@@ -38,6 +38,10 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->brandLogo(asset('logo.png'))
             ->brandLogoHeight('4rem')
+            ->renderHook(
+                \Filament\View\PanelsRenderHook::STYLES_AFTER,
+                fn () => view('filament.custom-logo-styles'),
+            )
             ->colors([
                 'primary' => '#e1caaa',
                 'secondary' => '#e1caaa',
